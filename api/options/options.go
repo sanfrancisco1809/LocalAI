@@ -4,10 +4,11 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"time"
 
+	"github.com/go-skynet/LocalAI/metrics"
 	"github.com/go-skynet/LocalAI/pkg/gallery"
 	model "github.com/go-skynet/LocalAI/pkg/model"
-	"github.com/go-skynet/LocalAI/metrics"
 	"github.com/rs/zerolog/log"
 )
 
@@ -36,7 +37,13 @@ type Option struct {
 
 	AutoloadGalleries bool
 
-	SingleBackend bool
+	SingleBackend           bool
+	ParallelBackendRequests bool
+
+	WatchDogIdle                             bool
+	WatchDogBusy                             bool
+	WatchDog                                 bool
+	WatchDogBusyTimeout, WatchDogIdleTimeout time.Duration
 }
 
 type AppOption func(*Option)
@@ -62,8 +69,38 @@ func WithCors(b bool) AppOption {
 	}
 }
 
+var EnableWatchDog = func(o *Option) {
+	o.WatchDog = true
+}
+
+var EnableWatchDogIdleCheck = func(o *Option) {
+	o.WatchDog = true
+	o.WatchDogIdle = true
+}
+
+var EnableWatchDogBusyCheck = func(o *Option) {
+	o.WatchDog = true
+	o.WatchDogBusy = true
+}
+
+func SetWatchDogBusyTimeout(t time.Duration) AppOption {
+	return func(o *Option) {
+		o.WatchDogBusyTimeout = t
+	}
+}
+
+func SetWatchDogIdleTimeout(t time.Duration) AppOption {
+	return func(o *Option) {
+		o.WatchDogIdleTimeout = t
+	}
+}
+
 var EnableSingleBackend = func(o *Option) {
 	o.SingleBackend = true
+}
+
+var EnableParallelBackendRequests = func(o *Option) {
+	o.ParallelBackendRequests = true
 }
 
 var EnableGalleriesAutoload = func(o *Option) {

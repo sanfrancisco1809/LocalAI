@@ -14,14 +14,27 @@ import (
 )
 
 type Client struct {
-	address string
-	busy    bool
+	address  string
+	busy     bool
+	parallel bool
 	sync.Mutex
+	opMutex sync.Mutex
+	wd      WatchDog
 }
 
-func NewClient(address string) *Client {
+type WatchDog interface {
+	Mark(address string)
+	UnMark(address string)
+}
+
+func NewClient(address string, parallel bool, wd WatchDog, enableWatchDog bool) *Client {
+	if !enableWatchDog {
+		wd = nil
+	}
 	return &Client{
-		address: address,
+		address:  address,
+		parallel: parallel,
+		wd:       wd,
 	}
 }
 
@@ -38,6 +51,10 @@ func (c *Client) setBusy(v bool) {
 }
 
 func (c *Client) HealthCheck(ctx context.Context) bool {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -66,8 +83,16 @@ func (c *Client) HealthCheck(ctx context.Context) bool {
 }
 
 func (c *Client) Embeddings(ctx context.Context, in *pb.PredictOptions, opts ...grpc.CallOption) (*pb.EmbeddingResult, error) {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
+	if c.wd != nil {
+		c.wd.Mark(c.address)
+		defer c.wd.UnMark(c.address)
+	}
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -79,8 +104,16 @@ func (c *Client) Embeddings(ctx context.Context, in *pb.PredictOptions, opts ...
 }
 
 func (c *Client) Predict(ctx context.Context, in *pb.PredictOptions, opts ...grpc.CallOption) (*pb.Reply, error) {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
+	if c.wd != nil {
+		c.wd.Mark(c.address)
+		defer c.wd.UnMark(c.address)
+	}
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -92,8 +125,16 @@ func (c *Client) Predict(ctx context.Context, in *pb.PredictOptions, opts ...grp
 }
 
 func (c *Client) LoadModel(ctx context.Context, in *pb.ModelOptions, opts ...grpc.CallOption) (*pb.Result, error) {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
+	if c.wd != nil {
+		c.wd.Mark(c.address)
+		defer c.wd.UnMark(c.address)
+	}
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -104,8 +145,16 @@ func (c *Client) LoadModel(ctx context.Context, in *pb.ModelOptions, opts ...grp
 }
 
 func (c *Client) PredictStream(ctx context.Context, in *pb.PredictOptions, f func(s []byte), opts ...grpc.CallOption) error {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
+	if c.wd != nil {
+		c.wd.Mark(c.address)
+		defer c.wd.UnMark(c.address)
+	}
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
@@ -135,8 +184,16 @@ func (c *Client) PredictStream(ctx context.Context, in *pb.PredictOptions, f fun
 }
 
 func (c *Client) GenerateImage(ctx context.Context, in *pb.GenerateImageRequest, opts ...grpc.CallOption) (*pb.Result, error) {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
+	if c.wd != nil {
+		c.wd.Mark(c.address)
+		defer c.wd.UnMark(c.address)
+	}
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -147,8 +204,16 @@ func (c *Client) GenerateImage(ctx context.Context, in *pb.GenerateImageRequest,
 }
 
 func (c *Client) TTS(ctx context.Context, in *pb.TTSRequest, opts ...grpc.CallOption) (*pb.Result, error) {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
+	if c.wd != nil {
+		c.wd.Mark(c.address)
+		defer c.wd.UnMark(c.address)
+	}
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -159,8 +224,16 @@ func (c *Client) TTS(ctx context.Context, in *pb.TTSRequest, opts ...grpc.CallOp
 }
 
 func (c *Client) AudioTranscription(ctx context.Context, in *pb.TranscriptRequest, opts ...grpc.CallOption) (*schema.Result, error) {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
+	if c.wd != nil {
+		c.wd.Mark(c.address)
+		defer c.wd.UnMark(c.address)
+	}
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -191,8 +264,16 @@ func (c *Client) AudioTranscription(ctx context.Context, in *pb.TranscriptReques
 }
 
 func (c *Client) TokenizeString(ctx context.Context, in *pb.PredictOptions, opts ...grpc.CallOption) (*pb.TokenizationResponse, error) {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
+	if c.wd != nil {
+		c.wd.Mark(c.address)
+		defer c.wd.UnMark(c.address)
+	}
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -209,6 +290,10 @@ func (c *Client) TokenizeString(ctx context.Context, in *pb.PredictOptions, opts
 }
 
 func (c *Client) Status(ctx context.Context) (*pb.StatusResponse, error) {
+	if !c.parallel {
+		c.opMutex.Lock()
+		defer c.opMutex.Unlock()
+	}
 	c.setBusy(true)
 	defer c.setBusy(false)
 	conn, err := grpc.Dial(c.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
