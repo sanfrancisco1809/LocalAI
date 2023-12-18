@@ -14,6 +14,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var Aliases map[string]string = map[string]string{
+	"go-llama": GoLlamaBackend,
+	"llama":    LLamaCPP,
+}
+
 const (
 	GoLlamaBackend      = "llama"
 	LlamaGGML           = "llama-ggml"
@@ -37,6 +42,9 @@ const (
 	StableDiffusionBackend = "stablediffusion"
 	PiperBackend           = "piper"
 	LCHuggingFaceBackend   = "langchain-huggingface"
+
+	// External Backends that need special handling within LocalAI:
+	TransformersMusicGen = "transformers-musicgen"
 )
 
 var AutoLoadBackends []string = []string{
@@ -166,9 +174,13 @@ func (ml *ModelLoader) resolveAddress(addr ModelAddress, parallel bool) (*grpc.C
 func (ml *ModelLoader) BackendLoader(opts ...Option) (client *grpc.Client, err error) {
 	o := NewOptions(opts...)
 
-	log.Debug().Msgf("Loading model %s from %s", o.backendString, o.model)
+	log.Info().Msgf("Loading model '%s' with backend %s", o.model, o.backendString)
 
 	backend := strings.ToLower(o.backendString)
+	if realBackend, exists := Aliases[backend]; exists {
+		backend = realBackend
+		log.Debug().Msgf("%s is an alias of %s", backend, realBackend)
+	}
 
 	if o.singleActiveBackend {
 		ml.mu.Lock()

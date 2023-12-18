@@ -8,7 +8,7 @@ GOLLAMA_VERSION?=aeba71ee842819da681ea537e78846dc75949ac0
 
 GOLLAMA_STABLE_VERSION?=50cee7712066d9e38306eccadcfbb44ea87df4b7
 
-CPPLLAMA_VERSION?=23b5e12eb5a76489b4c3ee22213a081da68b1809
+CPPLLAMA_VERSION?=b1306c439490c7fa4ec33594500d980d1e9e15e6
 
 # gpt4all version
 GPT4ALL_REPO?=https://github.com/nomic-ai/gpt4all
@@ -22,13 +22,13 @@ RWKV_REPO?=https://github.com/donomii/go-rwkv.cpp
 RWKV_VERSION?=c898cd0f62df8f2a7830e53d1d513bef4f6f792b
 
 # whisper.cpp version
-WHISPER_CPP_VERSION?=3c28d1a5712e4c06b0380166e6f482ca2b525970
+WHISPER_CPP_VERSION?=940de9dbe9c90624dc99521cb34c8a97b86d543c
 
 # bert.cpp version
 BERT_VERSION?=6abe312cded14042f6b7c3cd8edf082713334a4d
 
 # go-piper version
-PIPER_VERSION?=5a4c9e28c84bac09ab6baa9f88457d852cb46bb2
+PIPER_VERSION?=d6b6275ba037dabdba4a8b65dfdf6b2a73a67f07
 
 # stablediffusion version
 STABLEDIFFUSION_VERSION?=902db5f066fd137697e3b69d0fa10d4782bd2c2f
@@ -36,6 +36,7 @@ STABLEDIFFUSION_VERSION?=902db5f066fd137697e3b69d0fa10d4782bd2c2f
 export BUILD_TYPE?=
 export STABLE_BUILD_TYPE?=$(BUILD_TYPE)
 export CMAKE_ARGS?=
+
 CGO_LDFLAGS?=
 CUDA_LIBPATH?=/usr/local/cuda/lib64/
 GO_TAGS?=
@@ -191,7 +192,7 @@ backend-assets/gpt4all: sources/gpt4all/gpt4all-bindings/golang/libgpt4all.a
 backend-assets/espeak-ng-data: sources/go-piper
 	mkdir -p backend-assets/espeak-ng-data
 	$(MAKE) -C sources/go-piper piper.o
-	@cp -rf sources/go-piper/piper/build/pi/share/espeak-ng-data/. backend-assets/espeak-ng-data
+	@cp -rf sources/go-piper/piper-phonemize/pi/share/espeak-ng-data/. backend-assets/espeak-ng-data
 
 sources/gpt4all/gpt4all-bindings/golang/libgpt4all.a: sources/gpt4all
 	$(MAKE) -C sources/gpt4all/gpt4all-bindings/golang/ libgpt4all.a
@@ -229,7 +230,7 @@ sources/go-piper/libpiper_binding.a: sources/go-piper
 	$(MAKE) -C sources/go-piper libpiper_binding.a example/main
 
 backend/cpp/llama/llama.cpp:
-	$(MAKE) -C backend/cpp/llama llama.cpp	
+	LLAMA_VERSION=$(CPPLLAMA_VERSION) $(MAKE) -C backend/cpp/llama llama.cpp	
 
 get-sources: backend/cpp/llama/llama.cpp sources/go-llama sources/go-llama-ggml sources/go-ggml-transformers sources/gpt4all sources/go-piper sources/go-rwkv sources/whisper.cpp sources/go-bert sources/go-stable-diffusion
 	touch $@
@@ -383,12 +384,13 @@ help: ## Show this help.
 protogen: protogen-go protogen-python
 
 protogen-go:
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+	protoc -Ibackend/ --go_out=pkg/grpc/proto/ --go_opt=paths=source_relative --go-grpc_out=pkg/grpc/proto/ --go-grpc_opt=paths=source_relative \
     backend/backend.proto
 
 protogen-python:
 	python3 -m grpc_tools.protoc -Ibackend/ --python_out=backend/python/sentencetransformers/ --grpc_python_out=backend/python/sentencetransformers/ backend/backend.proto
 	python3 -m grpc_tools.protoc -Ibackend/ --python_out=backend/python/transformers/ --grpc_python_out=backend/python/transformers/ backend/backend.proto
+	python3 -m grpc_tools.protoc -Ibackend/ --python_out=backend/python/transformers-musicgen/ --grpc_python_out=backend/python/transformers-musicgen/ backend/backend.proto
 	python3 -m grpc_tools.protoc -Ibackend/ --python_out=backend/python/autogptq/ --grpc_python_out=backend/python/autogptq/ backend/backend.proto
 	python3 -m grpc_tools.protoc -Ibackend/ --python_out=backend/python/exllama/ --grpc_python_out=backend/python/exllama/ backend/backend.proto
 	python3 -m grpc_tools.protoc -Ibackend/ --python_out=backend/python/bark/ --grpc_python_out=backend/python/bark/ backend/backend.proto
@@ -407,11 +409,19 @@ prepare-extra-conda-environments:
 	$(MAKE) -C backend/python/vllm
 	$(MAKE) -C backend/python/sentencetransformers
 	$(MAKE) -C backend/python/transformers
+	$(MAKE) -C backend/python/transformers-musicgen
 	$(MAKE) -C backend/python/vall-e-x
 	$(MAKE) -C backend/python/exllama
 	$(MAKE) -C backend/python/petals
 	$(MAKE) -C backend/python/exllama2
 
+prepare-test-extra:
+	$(MAKE) -C backend/python/transformers
+	$(MAKE) -C backend/python/diffusers
+
+test-extra: prepare-test-extra
+	$(MAKE) -C backend/python/transformers test
+	$(MAKE) -C backend/python/diffusers test
 
 backend-assets/grpc:
 	mkdir -p backend-assets/grpc

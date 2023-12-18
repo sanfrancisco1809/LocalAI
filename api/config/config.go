@@ -38,14 +38,17 @@ type Config struct {
 
 	// Diffusers
 	Diffusers Diffusers `yaml:"diffusers"`
-
-	Step int `yaml:"step"`
+	Step      int       `yaml:"step"`
 
 	// GRPC Options
 	GRPC GRPC `yaml:"grpc"`
 
 	// Vall-e-x
 	VallE VallE `yaml:"vall-e"`
+
+	// CUDA
+	// Explicitly enable CUDA or not (some backends might need it)
+	CUDA bool `yaml:"cuda"`
 }
 
 type VallE struct {
@@ -65,15 +68,16 @@ type GRPC struct {
 }
 
 type Diffusers struct {
+	CUDA             bool    `yaml:"cuda"`
 	PipelineType     string  `yaml:"pipeline_type"`
 	SchedulerType    string  `yaml:"scheduler_type"`
-	CUDA             bool    `yaml:"cuda"`
 	EnableParameters string  `yaml:"enable_parameters"` // A list of comma separated parameters to specify
 	CFGScale         float32 `yaml:"cfg_scale"`         // Classifier-Free Guidance Scale
 	IMG2IMG          bool    `yaml:"img2img"`           // Image to Image Diffuser
 	ClipSkip         int     `yaml:"clip_skip"`         // Skip every N frames
 	ClipModel        string  `yaml:"clip_model"`        // Clip model to use
 	ClipSubFolder    string  `yaml:"clip_subfolder"`    // Subfolder to use for clip model
+	ControlNet       string  `yaml:"control_net"`
 }
 
 type LLMConfig struct {
